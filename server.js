@@ -21,8 +21,16 @@ const httpServer = createServer(app);
 // Socket.IO setup
 // Allow multiple origins via FRONTEND_URL env (comma-separated), fallback to localhost
 const rawFrontend = process.env.FRONTEND_URL || 'http://localhost:5173';
-const allowedOrigins = rawFrontend.split(',').map(s => s.trim()).filter(Boolean);
+// normalize: split, trim, remove trailing slashes, and filter empties
+const allowedOrigins = rawFrontend
+  .split(',')
+  .map(s => s.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
 const socketCorsOrigin = allowedOrigins.length === 1 ? allowedOrigins[0] : allowedOrigins;
+
+// Helpful startup log for debugging CORS origins
+console.log('FRONTEND_URL (raw):', rawFrontend);
+console.log('Allowed CORS origins:', allowedOrigins);
 
 const io = new Server(httpServer, {
   cors: {
