@@ -159,7 +159,7 @@ PORT=5000
 MONGODB_URI=mongodb+srv://admin:password@cluster.mongodb.net/AlertoDePin
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 NODE_ENV=development
-FRONTEND_URL=http://localhost:5173
+FRONTEND_URL=https://alerto-de-pin-frontend.vercel.app/
 ```
 
 ## Installation & Setup

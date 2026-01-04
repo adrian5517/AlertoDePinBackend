@@ -19,18 +19,41 @@ const app = express();
 const httpServer = createServer(app);
 
 // Socket.IO setup
+// Allow multiple origins via FRONTEND_URL env (comma-separated), fallback to localhost
+const rawFrontend = process.env.FRONTEND_URL || 'http://localhost:5173';
+const allowedOrigins = rawFrontend.split(',').map(s => s.trim()).filter(Boolean);
+const socketCorsOrigin = allowedOrigins.length === 1 ? allowedOrigins[0] : allowedOrigins;
+
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: socketCorsOrigin,
     methods: ['GET', 'POST', 'PUT', 'DELETE']
   }
 });
 
 // Middleware
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+// CORS: allow requests only from configured FRONTEND_URL(s)
+const corsOptions = {
+  origin: (origin, callback) => {
+    // allow non-browser or same-origin requests (e.g., server-to-server, curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('CORS policy: Origin not allowed'), false);
+  },
   credentials: true
-}));
+};
+
+app.use((req, res, next) => {
+  // use CORS middleware with dynamic origin check
+  cors(corsOptions)(req, res, (err) => {
+    if (err) {
+      // respond with standard CORS failure status for preflight
+      res.status(403).json({ message: 'CORS Error: Origin not allowed' });
+      return;
+    }
+    next();
+  });
+});
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
