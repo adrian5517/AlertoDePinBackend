@@ -160,6 +160,31 @@ app.use('/api/alerts', alertRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/notifications', notificationRoutes);
 
+// Debug endpoints (temporary)
+app.get('/api/debug/origins', (req, res) => {
+  res.json({ rawFrontend, allowedOrigins });
+});
+
+// Emit a test alert event to all connected clients. POST body may include `alert` object.
+app.post('/api/debug/emit-test', (req, res) => {
+  const ioInstance = req.app.get('io');
+  const payload = req.body && Object.keys(req.body).length ? req.body : {
+    id: `test-${Date.now()}`,
+    title: 'Test Alert',
+    message: 'This is a test alert emitted from /api/debug/emit-test',
+    location: { type: 'Point', coordinates: [121.0, 14.6] },
+    createdAt: new Date()
+  };
+
+  try {
+    ioInstance.emit('new-alert', payload);
+    return res.json({ ok: true, emitted: payload });
+  } catch (err) {
+    console.error('Emit test failed', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ 
