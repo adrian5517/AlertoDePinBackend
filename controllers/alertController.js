@@ -55,8 +55,18 @@ export const getAlerts = async (req, res) => {
     // If user is not admin, show only relevant alertss
     if (req.user.userType !== 'admin') {
       if (req.user.userType === 'citizen' || req.user.userType === 'family') {
-        // Citizens and family see only their own alerts
-        query.reporter = req.user.id;
+        // Citizens and family see their own alerts AND alerts from users who listed them as family members
+        try {
+          const reporters = await User.find({ familyMembers: req.user.id }).select('_id').lean();
+          const reporterIds = reporters.map(r => r._id.toString());
+          // include self
+          reporterIds.unshift(req.user.id);
+          query.reporter = { $in: reporterIds };
+        } catch (e) {
+          console.error('Error expanding family reporter list:', e);
+          // fallback to only own alerts
+          query.reporter = req.user.id;
+        }
       } else if (req.user.userType === 'police' || req.user.userType === 'hospital' || req.user.userType === 'fire') {
         // Responders see alerts they can respond to OR alerts they're assigned to
         query.$or = [
