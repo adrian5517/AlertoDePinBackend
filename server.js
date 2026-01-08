@@ -115,7 +115,7 @@ io.on('connection', (socket) => {
       onlineUsers.set(userId, user);
       
       // Broadcast updated location to all clients
-      io.emit('user-location-update', {
+      io.emit('user-location-update',  {
         userId,
         location,
         userType: user.userType,
