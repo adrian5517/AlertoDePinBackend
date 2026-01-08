@@ -62,8 +62,19 @@ app.use((req, res, next) => {
     next();
   });
 });
+
+// JSON body parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Friendly handler for malformed JSON payloads produced by body-parser
+app.use((err, req, res, next) => {
+  if (err && err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    console.warn('Invalid JSON received:', err.message);
+    return res.status(400).json({ message: 'Invalid JSON payload', error: err.message });
+  }
+  next(err);
+});
 
 // Track online users
 const onlineUsers = new Map(); // userId -> { socketId, location, userType, name, lastUpdate }
