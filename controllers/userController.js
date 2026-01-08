@@ -277,6 +277,80 @@ export const getStats = async (req, res) => {
   }
 };
 
+// @desc    Search users by name or email (for adding family members)
+// @route   GET /api/users/search
+// @access  Private
+export const searchUsers = async (req, res) => {
+  try {
+    const q = (req.query.q || '').trim();
+    if (!q) return res.json({ users: [] });
+
+    const regex = new RegExp(q, 'i');
+    const users = await User.find({
+      $or: [ { name: regex }, { email: regex } ]
+    })
+    .select('-password')
+    .limit(30);
+
+    // exclude self
+    const filtered = users.filter(u => u._id.toString() !== req.user.id);
+    res.json({ users: filtered });
+  } catch (error) {
+    console.error('Search users error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// @desc    Get current user's family members
+// @route   GET /api/users/family
+// @access  Private
+export const getFamilyMembers = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).populate('familyMembers', '-password');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json({ family: user.familyMembers || [] });
+  } catch (error) {
+    console.error('Get family members error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// @desc    Add or remove a family member
+// @route   PUT /api/users/family
+// @access  Private
+export const updateFamilyMember = async (req, res) => {
+  try {
+    const { action, memberId } = req.body;
+    if (!['add','remove'].includes(action) || !memberId) {
+      return res.status(400).json({ message: 'Invalid parameters' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const member = await User.findById(memberId).select('-password');
+    if (!member) return res.status(404).json({ message: 'Member not found' });
+
+    if (action === 'add') {
+      if (!user.familyMembers) user.familyMembers = [];
+      if (user.familyMembers.map(String).includes(memberId)) {
+        return res.json({ message: 'Already added', member });
+      }
+      user.familyMembers.push(memberId);
+    } else {
+      user.familyMembers = (user.familyMembers || []).filter(id => id.toString() !== memberId);
+    }
+
+    await user.save();
+
+    const updated = await User.findById(req.user.id).populate('familyMembers', '-password');
+    res.json({ message: 'Family updated', family: updated.familyMembers || [] });
+  } catch (error) {
+    console.error('Update family member error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // @desc    Delete user (Admin only)
 // @route   DELETE /api/users/:id
 // @access  Private/Admin

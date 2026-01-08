@@ -57,6 +57,10 @@ const userSchema = new mongoose.Schema({
     contactNumber: String,
     relationship: String
   }],
+  familyMembers: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
   createdAt: {
     type: Date,
     default: Date.now

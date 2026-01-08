@@ -52,7 +52,7 @@ export const getAlerts = async (req, res) => {
     if (type) query.type = type;
     if (priority) query.priority = priority;
 
-    // If user is not admin, show only relevant alerts
+    // If user is not admin, show only relevant alertss
     if (req.user.userType !== 'admin') {
       if (req.user.userType === 'citizen' || req.user.userType === 'family') {
         // Citizens and family see only their own alerts
@@ -247,6 +247,31 @@ export const createAlert = async (req, res) => {
           message: `New ${type} alert: ${title}`,
         }).catch(err => console.error('Error creating notification:', err));
       });
+    }
+    
+    // Notify family members of the reporter (if any)
+    try {
+      const reporter = await User.findById(req.user.id).populate('familyMembers', 'name email');
+      if (reporter && reporter.familyMembers && reporter.familyMembers.length > 0 && io) {
+        for (const fam of reporter.familyMembers) {
+          // Create notification record
+          const notif = await Notification.create({
+            user: fam._id,
+            alert: alert._id,
+            type: 'family_alert',
+            title: `Family alert from ${reporter.name}`,
+            message: `${reporter.name} sent an emergency alert: ${title}`,
+          }).catch(err => { console.error('Error creating family notification', err); return null; });
+
+          // Emit notification to family member socket room
+          if (io && fam._id) {
+            io.to(fam._id.toString()).emit('newNotification', notif);
+            io.to(fam._id.toString()).emit('new-alert', populatedAlert);
+          }
+        }
+      }
+    } catch (famErr) {
+      console.error('Error notifying family members:', famErr);
     }
     
     // Broadcast to all connected clients for live map updates

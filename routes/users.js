@@ -10,6 +10,9 @@ import {
   updateUserStatus,
   getStats,
   deleteUser,
+  searchUsers,
+  getFamilyMembers,
+  updateFamilyMember,
 } from '../controllers/userController.js';
 
 const router = express.Router();
@@ -38,6 +41,15 @@ router.put('/location', authenticate, updateLocation);
 // @desc    Get dashboard statistics
 // @access  Private
 router.get('/stats', authenticate, getStats);
+
+// Search users (for adding family)
+router.get('/search', authenticate, searchUsers);
+
+// Get family members
+router.get('/family', authenticate, getFamilyMembers);
+
+// Add/remove family member
+router.put('/family', authenticate, updateFamilyMember);
 
 // Admin routes
 // @route   GET /api/users
